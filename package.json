@@ -1,9 +1,9 @@
 {
     "name": "n8n-nodes-agimate",
     "version": "0.1.0",
-    "description": "",
-    "license": "MIT",
-    "homepage": "",
+    "description": "n8n community nodes for AgiMate Platform — triggers, connectors and mobile/desktop device control",
+    "license": "Apache-2.0",
+    "homepage": "https://github.com/AgiMateIo/n8n-nodes-agimate",
     "keywords": [
         "n8n-community-node-package"
     ],
@@ -13,7 +13,7 @@
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/agimate/n8n-nodes-agimate.git"
+        "url": "https://github.com/AgiMateIo/n8n-nodes-agimate.git"
     },
     "scripts": {
         "build": "n8n-node build",
@@ -35,8 +35,9 @@
             "dist/credentials/AgimateApi.credentials.js"
         ],
         "nodes": [
-            "dist/nodes/Example/Example.node.js",
-            "dist/nodes/AgimateTrigger/AgimateTrigger.node.js"
+            "dist/nodes/AgimateTrigger/AgimateTrigger.node.js",
+            "dist/nodes/AgimateConnectorAction/AgimateConnectorAction.node.js",
+            "dist/nodes/AgimateMobileAction/AgimateMobileAction.node.js"
         ]
     },
     "devDependencies": {
