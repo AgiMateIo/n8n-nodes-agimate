@@ -129,9 +129,6 @@ export class AgimateConnectorAction implements INodeType {
 					const credentials = await this.getCredentials('agimateApi');
 					const baseUrl = credentials.apiUrl as string;
 					const url = `${baseUrl}/connectors-api/api/connectors/credentials/${connectorCode}/`;
-
-					this.logger.warn("url " + url)
-
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						'agimateApi',
@@ -141,9 +138,6 @@ export class AgimateConnectorAction implements INodeType {
 							json: true,
 						},
 					);
-
-					this.logger.warn("response " + response)
-
 					// Parse response if it's a string
 					let parsedResponse = response;
 					if (typeof response === 'string') {
@@ -153,16 +147,10 @@ export class AgimateConnectorAction implements INodeType {
 					// Unwrap SuccessResponse: { response: [...] }
 					const responseObj = parsedResponse as any;
 					const connectorCredentials = responseObj.response || responseObj;
-
-					this.logger.warn("test 1")
-
 					// Ensure it's an array
 					if (!Array.isArray(connectorCredentials)) {
 						throw new Error('Response is not an array. Got: ' + typeof connectorCredentials);
 					}
-
-					this.logger.warn("test 2")
-
 					// Map to n8n options format
 					return connectorCredentials.map((connectorCred: any) => ({
 						name: connectorCred.name || 'Unknown',
@@ -187,9 +175,6 @@ export class AgimateConnectorAction implements INodeType {
 					const credentials = await this.getCredentials('agimateApi');
 					const baseUrl = credentials.apiUrl as string;
 					const url = `${baseUrl}/connectors-api/api/connectors/methods/${connectorCode}/` as string;
-
-					this.logger.warn("url " + url)
-
 					const response = await this.helpers.httpRequestWithAuthentication.call(
 						this,
 						'agimateApi',
@@ -351,8 +336,6 @@ export class AgimateConnectorAction implements INodeType {
 						{ itemIndex }
 					);
 				}
-
-
 				// Use connectorCode, methodName, parameters and requestBody for API calls
 				const item = items[itemIndex];
 				item.json.connectorCode = connectorCode;

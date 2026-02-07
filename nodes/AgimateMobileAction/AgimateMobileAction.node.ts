@@ -47,7 +47,7 @@ export class AgimateMobileAction implements INodeType {
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getMethods',
-					loadOptionsDependsOn: ['connector'],
+					loadOptionsDependsOn: ['mobileDevice'],
 				},
 				default: '',
 				required: true,
@@ -185,7 +185,6 @@ export class AgimateMobileAction implements INodeType {
 
 				// Get request body
 				const requestBodyStr = this.getNodeParameter('requestBody', itemIndex, '{}') as string;
-				this.logger.warn(requestBodyStr)
 				let requestBody: any = {};
 				try {
 					if (requestBodyStr && requestBodyStr.trim() !== '{}' && requestBodyStr.trim() !== '') {
