@@ -8,16 +8,16 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-export class AgimateMobileAction implements INodeType {
+export class AgimateDeviceAction implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Agimate Mobile',
-		name: 'agimateMobile',
-		icon: { light: 'file:agimate-mobile-action.svg', dark: 'file:agimate-mobile-action.dark.svg' },
+		displayName: 'Agimate Device',
+		name: 'agimateDevice',
+		icon: { light: 'file:agimate-device-action.svg', dark: 'file:agimate-device-action.dark.svg' },
 		group: ['input'],
 		version: 1,
-		description: 'By first agimate node',
+		description: 'Execute actions on devices registered with Agimate',
 		defaults: {
-			name: 'AgimateMobileAction',
+			name: 'AgimateDeviceAction',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
@@ -31,15 +31,15 @@ export class AgimateMobileAction implements INodeType {
 		properties: [
 
 			{
-				displayName: 'Mobile Device',
-				name: 'mobileDevice',
+				displayName: 'Device',
+				name: 'device',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getMobileDevices',
+					loadOptionsMethod: 'getDevices',
 				},
 				default: '',
 				required: true,
-				description: 'Select a mobile device to execute',
+				description: 'Select a device to execute',
 			},
 			{
 				displayName: 'Method',
@@ -47,7 +47,7 @@ export class AgimateMobileAction implements INodeType {
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getMethods',
-					loadOptionsDependsOn: ['mobileDevice'],
+					loadOptionsDependsOn: ['device'],
 				},
 				default: '',
 				required: true,
@@ -67,7 +67,7 @@ export class AgimateMobileAction implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getMobileDevices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getDevices(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				try {
 					const credentials = await this.getCredentials('agimateApi');
 					const baseUrl = credentials.apiUrl as string;
@@ -111,7 +111,7 @@ export class AgimateMobileAction implements INodeType {
 
 			async getMethods(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				try {
-					const mobileDevice = this.getCurrentNodeParameter('mobileDevice') as string;
+					const device = this.getCurrentNodeParameter('device') as string;
 
 					const credentials = await this.getCredentials('agimateApi');
 					const baseUrl = credentials.apiUrl as string;
@@ -121,12 +121,10 @@ export class AgimateMobileAction implements INodeType {
 						'agimateApi',
 						{
 							method: 'GET',
-							url: `${baseUrl}/device/api/device/actions/${mobileDevice}`,
+							url: `${baseUrl}/device/api/device/actions/${device}`,
 							json: true,
 						},
 					);
-
-                    this.logger.warn("url " + response)
 
 					// Parse response if it's a string
 					let parsedResponse = response;
@@ -166,10 +164,10 @@ export class AgimateMobileAction implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				// Get connector and method parameters
-				const mobileDevice = this.getNodeParameter('mobileDevice', itemIndex, '') as string;
+				const device = this.getNodeParameter('device', itemIndex, '') as string;
 				const methodName = this.getNodeParameter('method', itemIndex, '') as string;
 
-				if (!mobileDevice) {
+				if (!device) {
 					throw new NodeOperationError(
 						this.getNode(),
 						'Device must be selected',
@@ -209,7 +207,7 @@ export class AgimateMobileAction implements INodeType {
 					'agimateApi',
 					{
 						method: 'POST',
-						url: `${baseUrl}/device/api/device/call/${mobileDevice}`,
+						url: `${baseUrl}/device/api/device/call/${device}`,
 						json: true,
 						body: { type: methodName, parameters: requestBody }
 					},
@@ -235,9 +233,6 @@ export class AgimateMobileAction implements INodeType {
  				item.json.methodName = methodName;
 				item.json.requestBody = requestBody;
 				item.json.success = result;
-
-				// TODO: Add connector method execution logic here
-				// Example: await callConnectorMethod(connectorCode, methodName, parameters, requestBody);
 
 			} catch (error) {
 				// This node should never fail but we want to showcase how

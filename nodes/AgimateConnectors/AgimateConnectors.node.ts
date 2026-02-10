@@ -15,7 +15,7 @@ export class AgimateConnectorAction implements INodeType {
 		icon: { light: 'file:agimate-connector-action.svg', dark: 'file:agimate-connector-action.dark.svg' },
 		group: ['input'],
 		version: 1,
-		description: 'By first agimate node',
+		description: 'Execute methods on Agimate platform connectors',
 		defaults: {
 			name: 'AgimateConnectorAction',
 		},
@@ -342,9 +342,6 @@ export class AgimateConnectorAction implements INodeType {
 				item.json.methodName = methodName;
 				item.json.requestBody = requestBody;
 				item.json.methodMetadata = selectedMethod;
-
-				// TODO: Add connector method execution logic here
-				// Example: await callConnectorMethod(connectorCode, methodName, parameters, requestBody);
 
 			} catch (error) {
 				// This node should never fail but we want to showcase how

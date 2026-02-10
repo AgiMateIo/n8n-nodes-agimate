@@ -37,7 +37,7 @@
         "nodes": [
             "dist/nodes/AgimateTrigger/AgimateTrigger.node.js",
             "dist/nodes/AgimateConnectorAction/AgimateConnectorAction.node.js",
-            "dist/nodes/AgimateMobileAction/AgimateMobileAction.node.js"
+            "dist/nodes/AgimateDeviceAction/AgimateDeviceAction.node.js"
         ]
     },
     "devDependencies": {

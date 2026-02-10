@@ -32,12 +32,12 @@ Executes actions through connectors registered on the Agimate platform.
 - **Method** - Select a method to execute
 - **Request Body** - JSON request body for the method (optional)
 
-### Agimate Mobile
+### Agimate Device
 
 Executes actions on mobile devices registered with Agimate.
 
 **Parameters:**
-- **Mobile Device** - Select a device from your Agimate account
+- **Device** - Select a device from your Agimate account
 - **Method** - Select an action to execute on the device
 - **Request Body** - JSON request body for the action (optional)
 
@@ -79,11 +79,11 @@ Tested with n8n version 1.x. Requires n8n-workflow package.
 
 ## Usage
 
-### Example: Execute mobile device action
+### Example: Execute device action
 
-1. Add **Agimate Mobile** node to your workflow
+1. Add **Agimate Device** node to your workflow
 2. Configure credentials
-3. Select your mobile device
+3. Select your device
 4. Choose an action (e.g., `vibrate`)
 5. Set request body: `{"duration": 500}`
 
@@ -112,5 +112,5 @@ Tested with n8n version 1.x. Requires n8n-workflow package.
 ### 0.1.0
 - Initial release
 - Agimate Connectors node
-- Agimate Mobile node
+- Agimate Device node
 - Agimate Trigger node
