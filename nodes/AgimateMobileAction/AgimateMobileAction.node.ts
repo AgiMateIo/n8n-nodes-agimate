@@ -77,7 +77,7 @@ export class AgimateMobileAction implements INodeType {
 						'agimateApi',
 						{
 							method: 'GET',
-							url: `${baseUrl}/connectors-api/api/device/`,
+							url: `${baseUrl}/device/api/device/`,
 							json: true,
 						},
 					);
@@ -121,10 +121,12 @@ export class AgimateMobileAction implements INodeType {
 						'agimateApi',
 						{
 							method: 'GET',
-							url: `${baseUrl}/connectors-api/api/device/actions/${mobileDevice}`,
+							url: `${baseUrl}/device/api/device/actions/${mobileDevice}`,
 							json: true,
 						},
 					);
+
+                    this.logger.warn("url " + response)
 
 					// Parse response if it's a string
 					let parsedResponse = response;
@@ -207,12 +209,9 @@ export class AgimateMobileAction implements INodeType {
 					'agimateApi',
 					{
 						method: 'POST',
-						url: `${baseUrl}/connectors-api/api/device/call/${mobileDevice}`,
+						url: `${baseUrl}/device/api/device/call/${mobileDevice}`,
 						json: true,
-						headers: {
-							"content-type": "application/json"
-						},
-						body: requestBodyStr
+						body: { type: methodName, parameters: requestBody }
 					},
 				);
 
