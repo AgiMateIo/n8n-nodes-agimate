@@ -1,4 +1,5 @@
 import type {
+	IDataObject,
 	IWebhookFunctions,
 	INodeType,
 	INodeTypeDescription,
@@ -19,6 +20,7 @@ export class AgimateTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
+		usableAsTool: true,
 		credentials: [
 			{
 				name: 'agimateApi',
@@ -39,7 +41,7 @@ export class AgimateTrigger implements INodeType {
 				type: 'warning',
 				location: 'ndv',
 				whenToDisplay: 'beforeExecution',
-			}
+			},
 		],
 		properties: [
 			{
@@ -70,7 +72,7 @@ export class AgimateTrigger implements INodeType {
 						description: 'Accept all requests (not recommended for production)',
 					},
 				],
-				default: 'header',
+				default: 'none',
 				description: 'How to authenticate incoming webhook requests',
 			},
 			{
@@ -97,7 +99,6 @@ export class AgimateTrigger implements INodeType {
 		const includeHeaders = this.getNodeParameter('includeHeaders') as boolean;
 		const includeQuery = this.getNodeParameter('includeQuery') as boolean;
 
-		// Authentication validation
 		if (authMode === 'header') {
 			const headers = this.getHeaderData();
 			const authHeader = headers.authorization as string;
@@ -124,7 +125,6 @@ export class AgimateTrigger implements INodeType {
 			}
 		}
 
-		// Event type filtering
 		const eventType = (bodyData.event || 'unknown') as string;
 
 		if (!eventTypesFilter.includes('*') && !eventTypesFilter.includes(eventType)) {
@@ -137,9 +137,8 @@ export class AgimateTrigger implements INodeType {
 			};
 		}
 
-		// Build output data
-		const outputData: any = {
-			event: bodyData,
+		const outputData: IDataObject = {
+			event: bodyData as IDataObject,
 			metadata: {
 				eventType,
 				receivedAt: new Date().toISOString(),
@@ -148,14 +147,13 @@ export class AgimateTrigger implements INodeType {
 		};
 
 		if (includeHeaders) {
-			outputData.headers = this.getHeaderData();
+			outputData.headers = this.getHeaderData() as IDataObject;
 		}
 
 		if (includeQuery) {
-			outputData.query = this.getQueryData();
+			outputData.query = this.getQueryData() as IDataObject;
 		}
 
-		// Return success response
 		return {
 			workflowData: [[{ json: outputData }]],
 			webhookResponse: {

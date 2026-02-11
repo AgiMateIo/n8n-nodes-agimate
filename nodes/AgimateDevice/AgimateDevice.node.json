@@ -6,13 +6,14 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://github.com/org/repo?tab=readme-ov-file#credentials"
+				"url": "https://github.com/AgiMateIo/n8n-nodes-agimate?tab=readme-ov-file#credentials"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://github.com/org/repo?tab=readme-ov-file"
+				"url": "https://github.com/AgiMateIo/n8n-nodes-agimate?tab=readme-ov-file#agimate-device"
 			}
 		]
-	}
+	},
+	"alias": ["device", "mobile", "desktop", "agimate"]
 }

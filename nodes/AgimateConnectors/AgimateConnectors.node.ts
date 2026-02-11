@@ -8,7 +8,47 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
-export class AgimateConnectorAction implements INodeType {
+interface AgimateResponseWrapper {
+	response?: unknown[];
+}
+
+interface AgimateConnector {
+	name?: string;
+	code?: string;
+	id?: string;
+	description?: string;
+}
+
+interface AgimateCredential {
+	name?: string;
+	id?: string;
+	description?: string;
+}
+
+interface AgimateMethodParam {
+	name: string;
+	required: boolean;
+}
+
+interface AgimateBodyField {
+	name: string;
+	type: string;
+	required: boolean;
+	description: string;
+}
+
+interface AgimateMethod {
+	name?: string;
+	displayName?: string;
+	description?: string;
+	httpMethod?: string;
+	parameters?: AgimateMethodParam[];
+	requestBodySchema?: {
+		fields?: AgimateBodyField[];
+	};
+}
+
+export class AgimateConnectors implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Agimate Connectors',
 		name: 'agimateConnectors',
@@ -29,10 +69,8 @@ export class AgimateConnectorAction implements INodeType {
 			},
 		],
 		properties: [
-			// Node properties which the user gets displayed and
-			// can change on the node.
 			{
-				displayName: 'Connector',
+				displayName: 'Connector Name or ID',
 				name: 'connector',
 				type: 'options',
 				typeOptions: {
@@ -40,10 +78,11 @@ export class AgimateConnectorAction implements INodeType {
 				},
 				default: '',
 				required: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description: 'Select a connector from your Agimate account',
 			},
 			{
-				displayName: 'Connector Credentials',
+				displayName: 'Connector Credentials Name or ID',
 				name: 'connectorCredential',
 				type: 'options',
 				typeOptions: {
@@ -52,10 +91,11 @@ export class AgimateConnectorAction implements INodeType {
 				},
 				default: '',
 				required: true,
-				description: 'Select a credentials to execute',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+				description: 'Select credentials for the connector',
 			},
 			{
-				displayName: 'Method',
+				displayName: 'Method Name or ID',
 				name: 'method',
 				type: 'options',
 				typeOptions: {
@@ -64,6 +104,7 @@ export class AgimateConnectorAction implements INodeType {
 				},
 				default: '',
 				required: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 				description: 'Select a method to execute',
 			},
 			{
@@ -81,185 +122,157 @@ export class AgimateConnectorAction implements INodeType {
 	methods = {
 		loadOptions: {
 			async getConnectors(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				try {
-					const credentials = await this.getCredentials('agimateApi');
-					const baseUrl = credentials.apiUrl as string;
+				const credentials = await this.getCredentials('agimateApi');
+				const baseUrl = credentials.apiUrl as string;
 
-					const response = await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						'agimateApi',
-						{
-							method: 'GET',
-							url: `${baseUrl}/connectors-api/api/connectors/`,
-							json: true,
-						},
-					);
+				const response = await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					'agimateApi',
+					{
+						method: 'GET',
+						url: `${baseUrl}/connectors-api/api/connectors/`,
+						json: true,
+					},
+				);
 
-					// Parse response if it's a string
-					let parsedResponse = response;
-					if (typeof response === 'string') {
-						parsedResponse = JSON.parse(response);
-					}
-
-					// Unwrap SuccessResponse: { response: [...] }
-					const responseObj = parsedResponse as any;
-					const connectors = responseObj.response || responseObj;
-
-					// Ensure it's an array
-					if (!Array.isArray(connectors)) {
-						throw new Error('Response is not an array. Got: ' + typeof connectors);
-					}
-
-					// Map to n8n options format
-					return connectors.map((connector: any) => ({
-						name: connector.name || 'Unknown',
-						value: connector.code || connector.id || '',
-						description: connector.description || '',
-					}));
-				} catch (error) {
-					// Return error in a format that n8n can show
-					throw new Error('Failed to load connectors: ' + (error as Error).message);
+				let parsedResponse = response;
+				if (typeof response === 'string') {
+					parsedResponse = JSON.parse(response);
 				}
+
+				const responseObj = parsedResponse as AgimateResponseWrapper;
+				const connectors = (responseObj.response || responseObj) as AgimateConnector[];
+
+				if (!Array.isArray(connectors)) {
+					throw new NodeOperationError(this.getNode(), 'Response is not an array. Got: ' + typeof connectors);
+				}
+
+				return connectors.map((connector) => ({
+					name: connector.name || 'Unknown',
+					value: connector.code || connector.id || '',
+					description: connector.description || '',
+				}));
 			},
 
 			async getConnectorCredentials(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				try {
-					const connectorCode = this.getCurrentNodeParameter('connector') as string;
+				const connectorCode = this.getCurrentNodeParameter('connector') as string;
 
-					const credentials = await this.getCredentials('agimateApi');
-					const baseUrl = credentials.apiUrl as string;
-					const url = `${baseUrl}/connectors-api/api/connectors/credentials/${connectorCode}/`;
-					const response = await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						'agimateApi',
-						{
-							method: 'GET',
-							url: url,
-							json: true,
-						},
-					);
-					// Parse response if it's a string
-					let parsedResponse = response;
-					if (typeof response === 'string') {
-						parsedResponse = JSON.parse(response);
-					}
+				const credentials = await this.getCredentials('agimateApi');
+				const baseUrl = credentials.apiUrl as string;
+				const url = `${baseUrl}/connectors-api/api/connectors/credentials/${connectorCode}/`;
+				const response = await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					'agimateApi',
+					{
+						method: 'GET',
+						url: url,
+						json: true,
+					},
+				);
 
-					// Unwrap SuccessResponse: { response: [...] }
-					const responseObj = parsedResponse as any;
-					const connectorCredentials = responseObj.response || responseObj;
-					// Ensure it's an array
-					if (!Array.isArray(connectorCredentials)) {
-						throw new Error('Response is not an array. Got: ' + typeof connectorCredentials);
-					}
-					// Map to n8n options format
-					return connectorCredentials.map((connectorCred: any) => ({
-						name: connectorCred.name || 'Unknown',
-						value: connectorCred.id || '',
-						description: connectorCred.description || '',
-					}));
-
-				} catch (error) {
-					// Return error in a format that n8n can show
-					throw new Error('Failed to load credentials: ' + (error as Error).message);
+				let parsedResponse = response;
+				if (typeof response === 'string') {
+					parsedResponse = JSON.parse(response);
 				}
+
+				const responseObj = parsedResponse as AgimateResponseWrapper;
+				const connectorCredentials = (responseObj.response || responseObj) as AgimateCredential[];
+
+				if (!Array.isArray(connectorCredentials)) {
+					throw new NodeOperationError(this.getNode(), 'Response is not an array. Got: ' + typeof connectorCredentials);
+				}
+
+				return connectorCredentials.map((connectorCred) => ({
+					name: connectorCred.name || 'Unknown',
+					value: connectorCred.id || '',
+					description: connectorCred.description || '',
+				}));
 			},
 
 			async getMethods(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				try {
-					const connectorCode = this.getCurrentNodeParameter('connector') as string;
+				const connectorCode = this.getCurrentNodeParameter('connector') as string;
 
-					if (!connectorCode) {
-						return [];
-					}
-
-					const credentials = await this.getCredentials('agimateApi');
-					const baseUrl = credentials.apiUrl as string;
-					const url = `${baseUrl}/connectors-api/api/connectors/methods/${connectorCode}/` as string;
-					const response = await this.helpers.httpRequestWithAuthentication.call(
-						this,
-						'agimateApi',
-						{
-							method: 'GET',
-							url: url,
-							json: true,
-						},
-					);
-
-					// Parse response if it's a string
-					let parsedResponse = response;
-					if (typeof response === 'string') {
-						parsedResponse = JSON.parse(response);
-					}
-
-					// Unwrap SuccessResponse: { response: [...] }
-					const responseObj = parsedResponse as any;
-					const methods = responseObj.response || responseObj;
-
-					// Ensure it's an array
-					if (!Array.isArray(methods)) {
-						throw new Error('Response is not an array. Got: ' + typeof methods);
-					}
-
-					// Map to n8n options format
-					return methods.map((method: any) => {
-						let description = method.description || '';
-
-						// Add HTTP method to description
-						if (method.httpMethod) {
-							description = `[${method.httpMethod}] ${description}`;
-						}
-
-						// Add parameters information to description
-						if (method.parameters && Array.isArray(method.parameters) && method.parameters.length > 0) {
-							const requiredParams = method.parameters.filter((p: any) => p.required);
-							const optionalParams = method.parameters.filter((p: any) => !p.required);
-
-							const paramInfo: string[] = [];
-
-							if (requiredParams.length > 0) {
-								paramInfo.push('Required: ' + requiredParams.map((p: any) => p.name).join(', '));
-							}
-
-							if (optionalParams.length > 0) {
-								paramInfo.push('Optional: ' + optionalParams.map((p: any) => p.name).join(', '));
-							}
-
-							if (paramInfo.length > 0) {
-								description += (description ? ' | ' : '') + paramInfo.join(' | ');
-							}
-						}
-
-						// Add request body schema information to description
-						if (method.requestBodySchema && method.requestBodySchema.fields && method.requestBodySchema.fields.length > 0) {
-							const bodyFields = method.requestBodySchema.fields as Array<{ name: string; type: string; required: boolean; description: string }>;
-							const requiredBodyFields = bodyFields.filter((f) => f.required);
-							const optionalBodyFields = bodyFields.filter((f) => !f.required);
-
-							const bodyInfo: string[] = [];
-
-							if (requiredBodyFields.length > 0) {
-								bodyInfo.push('Body (required): ' + requiredBodyFields.map((f) => `${f.name}:${f.type}`).join(', '));
-							}
-
-							if (optionalBodyFields.length > 0) {
-								bodyInfo.push('Body (optional): ' + optionalBodyFields.map((f) => `${f.name}:${f.type}`).join(', '));
-							}
-
-							if (bodyInfo.length > 0) {
-								description += (description ? ' | ' : '') + bodyInfo.join(' | ');
-							}
-						}
-
-						return {
-							name: method.displayName || method.name || 'Unknown',
-							value: method.name || '',
-							description: description,
-						};
-					});
-				} catch (error) {
-					// Return error in a format that n8n can show
-					throw new Error('Failed to load methods: ' + (error as Error).message);
+				if (!connectorCode) {
+					return [];
 				}
+
+				const credentials = await this.getCredentials('agimateApi');
+				const baseUrl = credentials.apiUrl as string;
+				const url = `${baseUrl}/connectors-api/api/connectors/methods/${connectorCode}/`;
+				const response = await this.helpers.httpRequestWithAuthentication.call(
+					this,
+					'agimateApi',
+					{
+						method: 'GET',
+						url: url,
+						json: true,
+					},
+				);
+
+				let parsedResponse = response;
+				if (typeof response === 'string') {
+					parsedResponse = JSON.parse(response);
+				}
+
+				const responseObj = parsedResponse as AgimateResponseWrapper;
+				const methods = (responseObj.response || responseObj) as AgimateMethod[];
+
+				if (!Array.isArray(methods)) {
+					throw new NodeOperationError(this.getNode(), 'Response is not an array. Got: ' + typeof methods);
+				}
+
+				return methods.map((method) => {
+					let description = method.description || '';
+
+					if (method.httpMethod) {
+						description = `[${method.httpMethod}] ${description}`;
+					}
+
+					if (method.parameters && Array.isArray(method.parameters) && method.parameters.length > 0) {
+						const requiredParams = method.parameters.filter((p) => p.required);
+						const optionalParams = method.parameters.filter((p) => !p.required);
+
+						const paramInfo: string[] = [];
+
+						if (requiredParams.length > 0) {
+							paramInfo.push('Required: ' + requiredParams.map((p) => p.name).join(', '));
+						}
+
+						if (optionalParams.length > 0) {
+							paramInfo.push('Optional: ' + optionalParams.map((p) => p.name).join(', '));
+						}
+
+						if (paramInfo.length > 0) {
+							description += (description ? ' | ' : '') + paramInfo.join(' | ');
+						}
+					}
+
+					if (method.requestBodySchema?.fields && method.requestBodySchema.fields.length > 0) {
+						const bodyFields = method.requestBodySchema.fields;
+						const requiredBodyFields = bodyFields.filter((f) => f.required);
+						const optionalBodyFields = bodyFields.filter((f) => !f.required);
+
+						const bodyInfo: string[] = [];
+
+						if (requiredBodyFields.length > 0) {
+							bodyInfo.push('Body (required): ' + requiredBodyFields.map((f) => `${f.name}:${f.type}`).join(', '));
+						}
+
+						if (optionalBodyFields.length > 0) {
+							bodyInfo.push('Body (optional): ' + optionalBodyFields.map((f) => `${f.name}:${f.type}`).join(', '));
+						}
+
+						if (bodyInfo.length > 0) {
+							description += (description ? ' | ' : '') + bodyInfo.join(' | ');
+						}
+					}
+
+					return {
+						name: method.displayName || method.name || 'Unknown',
+						value: method.name || '',
+						description: description,
+					};
+				});
 			},
 
 		},
@@ -268,10 +281,8 @@ export class AgimateConnectorAction implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
-		// Iterates over all input items
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				// Get connector and method parameters
 				const connectorCode = this.getNodeParameter('connector', itemIndex, '') as string;
 				const methodName = this.getNodeParameter('method', itemIndex, '') as string;
 
@@ -279,7 +290,7 @@ export class AgimateConnectorAction implements INodeType {
 					throw new NodeOperationError(
 						this.getNode(),
 						'Connector must be selected',
-						{ itemIndex }
+						{ itemIndex },
 					);
 				}
 
@@ -287,30 +298,27 @@ export class AgimateConnectorAction implements INodeType {
 					throw new NodeOperationError(
 						this.getNode(),
 						'Method must be selected',
-						{ itemIndex }
+						{ itemIndex },
 					);
 				}
 
-				// Get request body
 				const requestBodyStr = this.getNodeParameter('requestBody', itemIndex, '{}') as string;
-				let requestBody: any = {};
+				let requestBody: Record<string, unknown> = {};
 				try {
 					if (requestBodyStr && requestBodyStr.trim() !== '{}' && requestBodyStr.trim() !== '') {
-						requestBody = JSON.parse(requestBodyStr);
+						requestBody = JSON.parse(requestBodyStr) as Record<string, unknown>;
 					}
 				} catch (error) {
 					throw new NodeOperationError(
 						this.getNode(),
 						'Invalid JSON in Request Body: ' + (error as Error).message,
-						{ itemIndex }
+						{ itemIndex },
 					);
 				}
 
-				// Get credentials and load method metadata for validation
 				const credentials = await this.getCredentials('agimateApi');
 				const baseUrl = credentials.apiUrl as string;
 
-				// Load method metadata to validate parameters
 				const methodsResponse = await this.helpers.httpRequestWithAuthentication.call(
 					this,
 					'agimateApi',
@@ -321,22 +329,22 @@ export class AgimateConnectorAction implements INodeType {
 					},
 				);
 
-				// Parse and find the selected method
 				let methodsData = methodsResponse;
 				if (typeof methodsResponse === 'string') {
 					methodsData = JSON.parse(methodsResponse);
 				}
-				const methods = (methodsData as any).response || methodsData;
-				const selectedMethod = methods.find((m: any) => m.name === methodName);
+				const methodsObj = methodsData as AgimateResponseWrapper;
+				const methods = (methodsObj.response || methodsObj) as AgimateMethod[];
+				const selectedMethod = methods.find((m) => m.name === methodName);
 
 				if (!selectedMethod) {
 					throw new NodeOperationError(
 						this.getNode(),
 						`Method '${methodName}' not found for connector '${connectorCode}'`,
-						{ itemIndex }
+						{ itemIndex },
 					);
 				}
-				// Use connectorCode, methodName, parameters and requestBody for API calls
+
 				const item = items[itemIndex];
 				item.json.connectorCode = connectorCode;
 				item.json.methodName = methodName;
@@ -344,19 +352,14 @@ export class AgimateConnectorAction implements INodeType {
 				item.json.methodMetadata = selectedMethod;
 
 			} catch (error) {
-				// This node should never fail but we want to showcase how
-				// to handle errors.
 				if (this.continueOnFail()) {
 					items.push({ json: this.getInputData(itemIndex)[0].json, error, pairedItem: itemIndex });
 				} else {
-					// Adding `itemIndex` allows other workflows to handle this error
-					if (error.context) {
-						// If the error thrown already contains the context property,
-						// only append the itemIndex
-						error.context.itemIndex = itemIndex;
+					if ((error as NodeOperationError).context) {
+						(error as NodeOperationError).context.itemIndex = itemIndex;
 						throw error;
 					}
-					throw new NodeOperationError(this.getNode(), error, {
+					throw new NodeOperationError(this.getNode(), error as Error, {
 						itemIndex,
 					});
 				}

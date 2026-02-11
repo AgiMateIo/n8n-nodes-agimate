@@ -6,12 +6,12 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://github.com/agimate/n8n-nodes-agimate?tab=readme-ov-file#credentials"
+				"url": "https://github.com/AgiMateIo/n8n-nodes-agimate?tab=readme-ov-file#credentials"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://github.com/agimate/n8n-nodes-agimate?tab=readme-ov-file#webhook-trigger"
+				"url": "https://github.com/AgiMateIo/n8n-nodes-agimate?tab=readme-ov-file#webhook-trigger"
 			}
 		]
 	},
