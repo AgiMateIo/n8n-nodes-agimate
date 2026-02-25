@@ -8,44 +8,28 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+function generateUUID(): string {
+	return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+		const r = (Math.random() * 16) | 0;
+		const v = c === 'x' ? r : (r & 0x3) | 0x8;
+		return v.toString(16);
+	});
+}
+
 interface AgimateResponseWrapper {
 	response?: unknown[];
 }
 
 interface AgimateConnector {
+	connectorPubId?: string;
 	name?: string;
-	code?: string;
-	id?: string;
 	description?: string;
 }
 
-interface AgimateCredential {
+interface AgimateDeviceTool {
 	name?: string;
-	id?: string;
 	description?: string;
-}
-
-interface AgimateMethodParam {
-	name: string;
-	required: boolean;
-}
-
-interface AgimateBodyField {
-	name: string;
-	type: string;
-	required: boolean;
-	description: string;
-}
-
-interface AgimateMethod {
-	name?: string;
-	displayName?: string;
-	description?: string;
-	httpMethod?: string;
-	parameters?: AgimateMethodParam[];
-	requestBodySchema?: {
-		fields?: AgimateBodyField[];
-	};
+	params?: string[];
 }
 
 export class AgimateConnectors implements INodeType {
@@ -55,7 +39,7 @@ export class AgimateConnectors implements INodeType {
 		icon: { light: 'file:agimate-connector-action.svg', dark: 'file:agimate-connector-action.dark.svg' },
 		group: ['input'],
 		version: 1,
-		description: 'Execute methods on Agimate platform connectors',
+		description: 'Execute tools on Agimate platform connectors',
 		defaults: {
 			name: 'AgimateConnectorAction',
 		},
@@ -82,39 +66,27 @@ export class AgimateConnectors implements INodeType {
 				description: 'Select a connector from your Agimate account',
 			},
 			{
-				displayName: 'Connector Credentials Name or ID',
-				name: 'connectorCredential',
+				displayName: 'Tool Name or ID',
+				name: 'tool',
 				type: 'options',
 				typeOptions: {
-					loadOptionsMethod: 'getConnectorCredentials',
+					loadOptionsMethod: 'getTools',
 					loadOptionsDependsOn: ['connector'],
 				},
 				default: '',
 				required: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-				description: 'Select credentials for the connector',
-			},
-			{
-				displayName: 'Method Name or ID',
-				name: 'method',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getMethods',
-					loadOptionsDependsOn: ['connectorCredential'],
-				},
-				default: '',
-				required: true,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-				description: 'Select a method to execute',
+				description: 'Select a tool to execute',
 			},
 			{
 				displayName: 'Request Body',
 				name: 'requestBody',
 				type: 'json',
 				default: '{}',
-				description: 'Request body as JSON (used for POST/PUT/PATCH methods)',
-				hint: 'Check method description - if it shows [POST/PUT/PATCH], you may need to provide request body',
-				placeholder: '{\n  "action": "vibrate",\n  "duration": 500\n}',
+				description:
+					'Request body as JSON. Leave as {} to auto-populate with empty params from the tool definition.',
+				hint: 'Check tool dropdown description for expected params. Leave as {} to auto-fill param names.',
+				placeholder: '{\n  "message": "Hello",\n  "chatId": "123"\n}',
 			},
 		],
 	};
@@ -130,7 +102,7 @@ export class AgimateConnectors implements INodeType {
 					'agimateApi',
 					{
 						method: 'GET',
-						url: `${baseUrl}/connectors-api/api/connectors/`,
+						url: `${baseUrl}/device/api/connectors/`,
 						json: true,
 					},
 				);
@@ -149,62 +121,27 @@ export class AgimateConnectors implements INodeType {
 
 				return connectors.map((connector) => ({
 					name: connector.name || 'Unknown',
-					value: connector.code || connector.id || '',
+					value: connector.connectorPubId || '',
 					description: connector.description || '',
 				}));
 			},
 
-			async getConnectorCredentials(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const connectorCode = this.getCurrentNodeParameter('connector') as string;
+			async getTools(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const connectorId = this.getCurrentNodeParameter('connector') as string;
 
-				const credentials = await this.getCredentials('agimateApi');
-				const baseUrl = credentials.apiUrl as string;
-				const url = `${baseUrl}/connectors-api/api/connectors/credentials/${connectorCode}/`;
-				const response = await this.helpers.httpRequestWithAuthentication.call(
-					this,
-					'agimateApi',
-					{
-						method: 'GET',
-						url: url,
-						json: true,
-					},
-				);
-
-				let parsedResponse = response;
-				if (typeof response === 'string') {
-					parsedResponse = JSON.parse(response);
-				}
-
-				const responseObj = parsedResponse as AgimateResponseWrapper;
-				const connectorCredentials = (responseObj.response || responseObj) as AgimateCredential[];
-
-				if (!Array.isArray(connectorCredentials)) {
-					throw new NodeOperationError(this.getNode(), 'Response is not an array. Got: ' + typeof connectorCredentials);
-				}
-
-				return connectorCredentials.map((connectorCred) => ({
-					name: connectorCred.name || 'Unknown',
-					value: connectorCred.id || '',
-					description: connectorCred.description || '',
-				}));
-			},
-
-			async getMethods(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const connectorCode = this.getCurrentNodeParameter('connector') as string;
-
-				if (!connectorCode) {
+				if (!connectorId) {
 					return [];
 				}
 
 				const credentials = await this.getCredentials('agimateApi');
 				const baseUrl = credentials.apiUrl as string;
-				const url = `${baseUrl}/connectors-api/api/connectors/methods/${connectorCode}/`;
+
 				const response = await this.helpers.httpRequestWithAuthentication.call(
 					this,
 					'agimateApi',
 					{
 						method: 'GET',
-						url: url,
+						url: `${baseUrl}/device/api/connectors/tools/${connectorId}`,
 						json: true,
 					},
 				);
@@ -215,62 +152,24 @@ export class AgimateConnectors implements INodeType {
 				}
 
 				const responseObj = parsedResponse as AgimateResponseWrapper;
-				const methods = (responseObj.response || responseObj) as AgimateMethod[];
+				const tools = (responseObj.response || responseObj) as AgimateDeviceTool[];
 
-				if (!Array.isArray(methods)) {
-					throw new NodeOperationError(this.getNode(), 'Response is not an array. Got: ' + typeof methods);
+				if (!Array.isArray(tools)) {
+					throw new NodeOperationError(this.getNode(), 'Response is not an array. Got: ' + typeof tools);
 				}
 
-				return methods.map((method) => {
-					let description = method.description || '';
-
-					if (method.httpMethod) {
-						description = `[${method.httpMethod}] ${description}`;
+				return tools.map((tool) => {
+					let description = tool.description || '';
+					if (tool.params && tool.params.length > 0) {
+						const template = JSON.stringify(
+							Object.fromEntries(tool.params.map((p) => [p, ''])),
+						);
+						description += (description ? ' | ' : '') + `Params: ${template}`;
 					}
-
-					if (method.parameters && Array.isArray(method.parameters) && method.parameters.length > 0) {
-						const requiredParams = method.parameters.filter((p) => p.required);
-						const optionalParams = method.parameters.filter((p) => !p.required);
-
-						const paramInfo: string[] = [];
-
-						if (requiredParams.length > 0) {
-							paramInfo.push('Required: ' + requiredParams.map((p) => p.name).join(', '));
-						}
-
-						if (optionalParams.length > 0) {
-							paramInfo.push('Optional: ' + optionalParams.map((p) => p.name).join(', '));
-						}
-
-						if (paramInfo.length > 0) {
-							description += (description ? ' | ' : '') + paramInfo.join(' | ');
-						}
-					}
-
-					if (method.requestBodySchema?.fields && method.requestBodySchema.fields.length > 0) {
-						const bodyFields = method.requestBodySchema.fields;
-						const requiredBodyFields = bodyFields.filter((f) => f.required);
-						const optionalBodyFields = bodyFields.filter((f) => !f.required);
-
-						const bodyInfo: string[] = [];
-
-						if (requiredBodyFields.length > 0) {
-							bodyInfo.push('Body (required): ' + requiredBodyFields.map((f) => `${f.name}:${f.type}`).join(', '));
-						}
-
-						if (optionalBodyFields.length > 0) {
-							bodyInfo.push('Body (optional): ' + optionalBodyFields.map((f) => `${f.name}:${f.type}`).join(', '));
-						}
-
-						if (bodyInfo.length > 0) {
-							description += (description ? ' | ' : '') + bodyInfo.join(' | ');
-						}
-					}
-
 					return {
-						name: method.displayName || method.name || 'Unknown',
-						value: method.name || '',
-						description: description,
+						name: tool.name || 'Unknown',
+						value: tool.name || '',
+						description,
 					};
 				});
 			},
@@ -283,10 +182,10 @@ export class AgimateConnectors implements INodeType {
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				const connectorCode = this.getNodeParameter('connector', itemIndex, '') as string;
-				const methodName = this.getNodeParameter('method', itemIndex, '') as string;
+				const connectorId = this.getNodeParameter('connector', itemIndex, '') as string;
+				const toolName = this.getNodeParameter('tool', itemIndex, '') as string;
 
-				if (!connectorCode) {
+				if (!connectorId) {
 					throw new NodeOperationError(
 						this.getNode(),
 						'Connector must be selected',
@@ -294,10 +193,10 @@ export class AgimateConnectors implements INodeType {
 					);
 				}
 
-				if (!methodName) {
+				if (!toolName) {
 					throw new NodeOperationError(
 						this.getNode(),
-						'Method must be selected',
+						'Tool must be selected',
 						{ itemIndex },
 					);
 				}
@@ -319,37 +218,68 @@ export class AgimateConnectors implements INodeType {
 				const credentials = await this.getCredentials('agimateApi');
 				const baseUrl = credentials.apiUrl as string;
 
-				const methodsResponse = await this.helpers.httpRequestWithAuthentication.call(
+				// Auto-populate params when requestBody is empty
+				if (Object.keys(requestBody).length === 0) {
+					const toolsResponse = await this.helpers.httpRequestWithAuthentication.call(
+						this,
+						'agimateApi',
+						{
+							method: 'GET',
+							url: `${baseUrl}/device/api/connectors/tools/${connectorId}`,
+							json: true,
+						},
+					);
+
+					let parsedTools = toolsResponse;
+					if (typeof toolsResponse === 'string') {
+						parsedTools = JSON.parse(toolsResponse);
+					}
+
+					const toolsObj = parsedTools as AgimateResponseWrapper;
+					const tools = (toolsObj.response || toolsObj) as AgimateDeviceTool[];
+
+					if (Array.isArray(tools)) {
+						const matched = tools.find((t) => t.name === toolName);
+						if (matched?.params && matched.params.length > 0) {
+							requestBody = Object.fromEntries(
+								matched.params.map((p) => [p, '']),
+							);
+						}
+					}
+				}
+
+				const response = await this.helpers.httpRequestWithAuthentication.call(
 					this,
 					'agimateApi',
 					{
-						method: 'GET',
-						url: `${baseUrl}/connectors-api/api/methods/${connectorCode}`,
+						method: 'POST',
+						url: `${baseUrl}/device/api/connectors/call/${connectorId}`,
 						json: true,
+						body: { id: generateUUID(), name: toolName, params: requestBody },
 					},
 				);
 
-				let methodsData = methodsResponse;
-				if (typeof methodsResponse === 'string') {
-					methodsData = JSON.parse(methodsResponse);
+				let parsedResponse = response;
+				if (typeof response === 'string') {
+					parsedResponse = JSON.parse(response);
 				}
-				const methodsObj = methodsData as AgimateResponseWrapper;
-				const methods = (methodsObj.response || methodsObj) as AgimateMethod[];
-				const selectedMethod = methods.find((m) => m.name === methodName);
 
-				if (!selectedMethod) {
+				const responseObj = parsedResponse as Record<string, unknown>;
+				const result = responseObj.response || responseObj;
+
+				if (result !== 'success') {
 					throw new NodeOperationError(
 						this.getNode(),
-						`Method '${methodName}' not found for connector '${connectorCode}'`,
+						'Connector tool call failed',
 						{ itemIndex },
 					);
 				}
 
 				const item = items[itemIndex];
-				item.json.connectorCode = connectorCode;
-				item.json.methodName = methodName;
+				item.json.connectorId = connectorId;
+				item.json.toolName = toolName;
 				item.json.requestBody = requestBody;
-				item.json.methodMetadata = selectedMethod;
+				item.json.success = result;
 
 			} catch (error) {
 				if (this.continueOnFail()) {
