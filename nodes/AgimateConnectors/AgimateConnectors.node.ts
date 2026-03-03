@@ -102,7 +102,7 @@ export class AgimateConnectors implements INodeType {
 					'agimateApi',
 					{
 						method: 'GET',
-						url: `${baseUrl}/device/api/connectors/`,
+						url: `${baseUrl}/device/agent/connectors/`,
 						json: true,
 					},
 				);
@@ -141,7 +141,7 @@ export class AgimateConnectors implements INodeType {
 					'agimateApi',
 					{
 						method: 'GET',
-						url: `${baseUrl}/device/api/connectors/tools/${connectorId}`,
+						url: `${baseUrl}/device/agent/connectors/tools/${connectorId}`,
 						json: true,
 					},
 				);
@@ -225,7 +225,7 @@ export class AgimateConnectors implements INodeType {
 						'agimateApi',
 						{
 							method: 'GET',
-							url: `${baseUrl}/device/api/connectors/tools/${connectorId}`,
+							url: `${baseUrl}/device/agent/connectors/tools/${connectorId}`,
 							json: true,
 						},
 					);
@@ -253,7 +253,7 @@ export class AgimateConnectors implements INodeType {
 					'agimateApi',
 					{
 						method: 'POST',
-						url: `${baseUrl}/device/api/connectors/call/${connectorId}`,
+						url: `${baseUrl}/device/agent/tool/call/${connectorId}`,
 						json: true,
 						body: { id: generateUUID(), name: toolName, params: requestBody },
 					},
