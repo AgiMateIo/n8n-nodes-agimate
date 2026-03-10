@@ -37,8 +37,8 @@ export class AgimateApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.apiUrl}}',
-			url: '/user/api-keys/verify',
-			method: 'POST',
+			url: '/agent/settings',
+			method: 'GET',
 		},
 	};
 }

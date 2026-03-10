@@ -255,7 +255,7 @@ export class AgimateConnectors implements INodeType {
 						method: 'POST',
 						url: `${baseUrl}/device/agent/tool/call/${connectorId}`,
 						json: true,
-						body: { id: generateUUID(), name: toolName, params: requestBody },
+						body: { id: generateUUID(), name: toolName, input: requestBody },
 					},
 				);
 
@@ -265,21 +265,13 @@ export class AgimateConnectors implements INodeType {
 				}
 
 				const responseObj = parsedResponse as Record<string, unknown>;
-				const result = responseObj.response || responseObj;
-
-				if (result !== 'success') {
-					throw new NodeOperationError(
-						this.getNode(),
-						'Connector tool call failed',
-						{ itemIndex },
-					);
-				}
+				const toolUseId = responseObj.response || responseObj;
 
 				const item = items[itemIndex];
 				item.json.connectorId = connectorId;
 				item.json.toolName = toolName;
 				item.json.requestBody = requestBody;
-				item.json.success = result;
+				item.json.toolUseId = toolUseId;
 
 			} catch (error) {
 				if (this.continueOnFail()) {
